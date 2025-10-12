@@ -73,8 +73,24 @@ HW2b::initializeGL()
 void
 HW2b::resizeGL(int w, int h)
 {
-	// PUT YOUR CODE HERE
+    m_winW = w;
+    m_winH = h;
+
+    // set viewport to match new window size
+    glViewport(0, 0, w, h);
+
+    // set up projection matrix with correct aspect ratio
+    m_projection.setToIdentity();
+    if (w <= h)
+        m_projection.ortho(-1.0, 1.0, -1.0 * (float)h / w, 1.0 * (float)h / w, -1.0, 1.0);
+    else
+        m_projection.ortho(-1.0 * (float)w / h, 1.0 * (float)w / h, -1.0, 1.0, -1.0, 1.0);
+
+    // use the shader and send the projection matrix to the GPU
+    glUseProgram(m_program[HW2B].programId());
+    glUniformMatrix4fv(m_uniform[HW2B][PROJ], 1, GL_FALSE, m_projection.constData());
 }
+
 
 
 
@@ -86,8 +102,50 @@ HW2b::resizeGL(int w, int h)
 void
 HW2b::paintGL()
 {
-	// PUT YOUR CODE HERE
+    // ensure buffers exist
+    if (!m_vertexBuffer || !m_colorBuffer) {
+        GLuint buffers[2];
+        glGenBuffers(2, buffers);
+        m_vertexBuffer = buffers[0];
+        m_colorBuffer  = buffers[1];
+    }
+
+    // reset modelview (GPU handles rotation)
+    m_modelview.setToIdentity();
+
+    // clear the frame
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // activate the shader
+    glUseProgram(m_program[HW2B].programId());
+
+    // send uniforms
+    glUniformMatrix4fv(m_uniform[HW2B][MV], 1, GL_FALSE, m_modelview.constData());
+    glUniform1f(m_uniform[HW2B][THETA], m_theta);
+    glUniform1i(m_uniform[HW2B][TWIST], (int)m_twist);
+
+    // fetch actual attribute locations from shader
+    GLint posLoc = glGetAttribLocation(m_program[HW2B].programId(), "a_Position");
+    GLint colLoc = glGetAttribLocation(m_program[HW2B].programId(), "a_Color");
+
+    // bind and enable position buffer
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
+    glEnableVertexAttribArray(posLoc);
+    glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // bind and enable color buffer
+    glBindBuffer(GL_ARRAY_BUFFER, m_colorBuffer);
+    glEnableVertexAttribArray(colLoc);
+    glVertexAttribPointer(colLoc, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // draw
+    glDrawArrays(GL_TRIANGLES, 0, m_numPoints);
+
+    // disable attributes
+    glDisableVertexAttribArray(posLoc);
+    glDisableVertexAttribArray(colLoc);
 }
+
 
 
 
@@ -188,7 +246,7 @@ HW2b::reset()
 	m_checkBoxTwist->setChecked(m_twist);
 
 	// recompute geometry
-	initVertexBuffer();
+    QBuffer();
 
 	// reset 4x4 modelview matrix
 	m_modelview.setToIdentity();
@@ -223,13 +281,21 @@ HW2b::initShaders()
 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// HW2b::initVertexBuffer:
+// HW2b::uffer:
 //
 // Initialize vertex buffer.
 //
 void
 HW2b::initVertexBuffer()
 {
+    if (!m_vertexBuffer || !m_colorBuffer) {
+        GLuint buffers[2];
+        glGenBuffers(2, buffers);
+        m_vertexBuffer = buffers[0];
+        m_colorBuffer  = buffers[1];
+    }
+
+
 	// init geometry data
 	const vec2 vertices[] = {
 		vec2( 0.0f,   0.75f ),
@@ -265,7 +331,18 @@ HW2b::initVertexBuffer()
 void
 HW2b::divideTriangle(vec2 a, vec2 b, vec2 c, int count)
 {
-	// PUT YOUR CODE HERE
+    if (count > 0) {
+        vec2 ab = (a + b) / 2.0f;
+        vec2 ac = (a + c) / 2.0f;
+        vec2 bc = (b + c) / 2.0f;
+
+        divideTriangle(a, ab, ac, count - 1);
+        divideTriangle(b, bc, ab, count - 1);
+        divideTriangle(c, ac, bc, count - 1);
+        divideTriangle(ab, bc, ac, count - 1);
+    } else {
+        triangle(a, b, c);
+    }
 }
 
 
@@ -343,7 +420,10 @@ HW2b::changeSubdiv(int subdivisions)
 
 	// init vars
 	m_subdivisions = subdivisions;
-
+    GLuint buffers[2];
+    glGenBuffers(2, buffers);
+    m_vertexBuffer = buffers[0];
+    m_colorBuffer  = buffers[1];
 	// compute new vertices and colors
 	initVertexBuffer();
 
