@@ -13,7 +13,7 @@
 enum { HW2A };
 
 // uniform ID
-enum { PROJ };
+enum { PROJ, THETA, TWIST };
 
 const int DrawModes[] = {
 	GL_POINTS,
@@ -72,6 +72,20 @@ void
 HW2a::resizeGL(int w, int h)
 {
 	// PUT YOUR CODE HERE
+    // setup gl viewport, init qmatrix4x4, orthogonalize, bind
+
+
+    glViewport(0, 0, w, h);
+    m_winW = w;
+    m_winH = h;
+
+    QMatrix4x4 proj;
+    proj.ortho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+
+    // bind shader and pass projection
+    glUseProgram(m_program[HW2A].programId());
+    glUniformMatrix4fv(m_uniform[HW2A][PROJ], 1, GL_FALSE, proj.constData());
+
 }
 
 
@@ -86,7 +100,9 @@ HW2a::paintGL()
 {
 	// clear canvas with background color
 	glClear(GL_COLOR_BUFFER_BIT);
-	
+
+    glUseProgram(m_program[HW2A].programId());
+
 	// enable vertex shader point size adjustment
 	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
@@ -112,6 +128,14 @@ HW2a::paintGL()
 
 	// use glsl program
 	// PUT YOUR CODE HERE
+
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            int idx = row * 3 + col;
+            glViewport(col * w, row * h, w, h);
+            glDrawArrays(DrawModes[idx], 0, m_vertNum);
+        }
+    }
 
 	// disable vertex shader point size adjustment
 	glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -159,6 +183,9 @@ HW2a::initShaders()
 	// init uniforms hash table based on uniform variable names and location IDs
 	UniformMap uniforms;
 	uniforms["u_Projection"] = PROJ;
+    uniforms["u_Theta"] = THETA;
+    uniforms["u_Twist"] = TWIST;
+
 
 	// compile shader, bind attribute vars, link shader, and initialize uniform var table
 	initShader(HW2A, QString(":/hw2/vshader2a.glsl"), QString(":/hw2/fshader2a.glsl"), uniforms);
