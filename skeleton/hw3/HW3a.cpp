@@ -120,28 +120,48 @@ HW3a::paintGL()
 	// clear canvas with background color
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	// bind vertex buffer to the GPU; enable buffer to be copied to the
-	// attribute vertex variable and specify data format
-	// PUT YOUR CODE HERE
+	// bind vertex buffer to the GPU; enable buffer to be accessed
+	// via the attribute vertex variable and specify data format
+	glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
+	glEnableVertexAttribArray(ATTRIB_VERTEX);
+	glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, false, 0, NULL);
 
 	// bind texture coord buffer to the GPU; enable buffer to be copied to the
 	// attribute texture coordinate variable and specify data format
-	// PUT YOUR CODE HERE
+	glBindBuffer(GL_ARRAY_BUFFER, m_texBuffer);
+	glEnableVertexAttribArray(ATTRIB_TEXCOORD);
+	glVertexAttribPointer(ATTRIB_TEXCOORD, 2, GL_FLOAT, false, 0, NULL);
 
 	// use texture glsl program
-	// PUT YOUR CODE HERE
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+	glUseProgram(m_program[TEXTURE].programId());
 
 	// pass parameters to vertex shader
-	// PUT YOUR CODE HERE
+	glUniformMatrix4fv(m_uniform[TEXTURE][MV], 1, GL_FALSE, m_modelview.constData());
+	glUniformMatrix4fv(m_uniform[TEXTURE][PROJ], 1, GL_FALSE, m_projection.constData());
+	glUniform1f(m_uniform[TEXTURE][THETA], m_theta);
+	glUniform1i(m_uniform[TEXTURE][TWIST], (int)m_twist);
+	glUniform1i(m_uniform[TEXTURE][SAMPLER], 0);
 
 	// draw texture mapped triangles
-	// PUT YOUR CODE HERE
+	glDrawArrays(GL_TRIANGLES, 0, m_numPoints);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	glLineWidth(1.5f);
 
 	// draw wireframe, if necessary
 	if(m_wire) {
-		// PUT YOUR CODE HERE
+		glUseProgram(m_program[WIREFRAME].programId());
+		glUniformMatrix4fv(m_uniform[WIREFRAME][MV], 1, GL_FALSE, m_modelview.constData());
+		glUniformMatrix4fv(m_uniform[WIREFRAME][PROJ], 1, GL_FALSE, m_projection.constData());
+		glUniform1f(m_uniform[WIREFRAME][THETA], m_theta);
+		glUniform1i(m_uniform[WIREFRAME][TWIST], (int)m_twist);
+		
+		// draw wireframe: draw 3 lines per triangle (each triangle has 3 vertices)
+		// needed to use GL_LINE_LOOP for wireframe
+		for(int i = 0; i < m_numPoints; i += 3) {
+			glDrawArrays(GL_LINE_LOOP, i, 3);
+		}
 	}
 }
 
@@ -337,6 +357,10 @@ HW3a::initShaders()
 void
 HW3a::initVertexBuffer()
 {
+	// clear previous geometry data
+	m_points.clear();
+	m_coords.clear();
+
 	// init geometry data
 	const vec2 vertices[] = {
 		vec2( 0.0f,   0.75f ),
@@ -344,7 +368,20 @@ HW3a::initVertexBuffer()
 		vec2(-0.65f, -0.375f)
 	};
 
-	// PUT YOUR CODE HERE
+	divideTriangle(vertices[0], vertices[1], vertices[2], m_subdivisions);
+	m_numPoints = (int) m_points.size();
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, m_numPoints * sizeof(vec2), &m_points[0], GL_STATIC_DRAW);
+
+	// bind texture coord buffer to the GPU; enable buffer to be copied to the
+	// attribute texture coordinate variable and specify data format
+	glBindBuffer(GL_ARRAY_BUFFER, m_texBuffer);
+	glBufferData(GL_ARRAY_BUFFER, m_numPoints * sizeof(vec2), &m_coords[0], GL_STATIC_DRAW);
+
+	m_points.clear();
+	m_coords.clear();
 }
 
 
@@ -357,7 +394,18 @@ HW3a::initVertexBuffer()
 void
 HW3a::divideTriangle(vec2 a, vec2 b, vec2 c, int count)
 {
-	// PUT YOUR CODE HERE
+    if (count > 0) {
+        vec2 ab = (a + b) / 2.0f;
+        vec2 ac = (a + c) / 2.0f;
+        vec2 bc = (b + c) / 2.0f;
+
+        divideTriangle(a, ab, ac, count - 1);
+        divideTriangle(b, bc, ab, count - 1);
+        divideTriangle(c, ac, bc, count - 1);
+        divideTriangle(ab, bc, ac, count - 1);
+    } else {
+        triangle(a, b, c);
+    }
 }
 
 
