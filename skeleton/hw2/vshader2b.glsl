@@ -12,7 +12,6 @@ uniform	int	u_Twist;	// Twist flag
 
 void main() 
 {
-	// PUT YOUR CODE HERE
 	// start with original vertex position
 	    vec2 pos = a_Position;
 

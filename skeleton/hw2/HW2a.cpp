@@ -57,7 +57,6 @@ HW2a::initializeGL()
 
 	// init state variables
 	glClearColor(0.0, 0.0, 0.0, 0.0);	// set background color
-	glColor3f   (1.0, 1.0, 0.0);		// set foreground color
 }
 
 
@@ -71,21 +70,30 @@ HW2a::initializeGL()
 void
 HW2a::resizeGL(int w, int h)
 {
-	// PUT YOUR CODE HERE
-    // setup gl viewport, init qmatrix4x4, orthogonalize, bind
+	m_winW = w;
+	m_winH = h;
 
+	// ar = aspect ratio
+	float xmax, ymax;
+	float ar = (float) w / h;
+	if (ar > 1.0) { // wide screen
+		xmax = ar;
+		ymax = 1.0;
+	} else { // tall screen
+		xmax = 1.0;
+		ymax = 1.0 / ar;
+	}
 
-    glViewport(0, 0, w, h);
-    m_winW = w;
-    m_winH = h;
+	// set viewport to occupy full canvas
+	glViewport(0, 0, w, h);
 
-    QMatrix4x4 proj;
-    proj.ortho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+	// init viewing coordinates for orthographic projection
+	m_projection.setToIdentity();
+	m_projection.ortho(-xmax, xmax, -ymax, ymax, -1.0, 1.0);
 
-    // bind shader and pass projection
-    glUseProgram(m_program[HW2A].programId());
-    glUniformMatrix4fv(m_uniform[HW2A][PROJ], 1, GL_FALSE, proj.constData());
-
+	// bind shader and pass projection
+	glUseProgram(m_program[HW2A].programId());
+	glUniformMatrix4fv(m_uniform[HW2A][PROJ], 1, GL_FALSE, m_projection.constData());
 }
 
 
@@ -101,7 +109,7 @@ HW2a::paintGL()
 	// clear canvas with background color
 	glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(m_program[HW2A].programId());
+	glUseProgram(m_program[HW2A].programId());
 
 	// enable vertex shader point size adjustment
 	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -126,16 +134,17 @@ HW2a::paintGL()
 	int w = m_winW / 3;
 	int h = m_winH / 3;
 
-	// use glsl program
-	// PUT YOUR CODE HERE
+	// draw 9 letter 'P' shapes in a 3x3 grid
+	for (int i = 0; i < 9; i++) {
+		int row = i / 3;
+		int col = i % 3;
 
-    for (int row = 0; row < 3; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            int idx = row * 3 + col;
-            glViewport(col * w, row * h, w, h);
-            glDrawArrays(DrawModes[idx], 0, m_vertNum);
-        }
-    }
+		// set viewport for this cell
+		glViewport(col * w, row * h, w, h);
+
+		// draw with the appropriate draw mode
+		glDrawArrays(DrawModes[i], 0, m_vertNum);
+	}
 
 	// disable vertex shader point size adjustment
 	glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -183,8 +192,8 @@ HW2a::initShaders()
 	// init uniforms hash table based on uniform variable names and location IDs
 	UniformMap uniforms;
 	uniforms["u_Projection"] = PROJ;
-    uniforms["u_Theta"] = THETA;
-    uniforms["u_Twist"] = TWIST;
+	uniforms["u_Theta"] = THETA;
+	uniforms["u_Twist"] = TWIST;
 
 
 	// compile shader, bind attribute vars, link shader, and initialize uniform var table

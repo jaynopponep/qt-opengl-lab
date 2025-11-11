@@ -95,31 +95,23 @@ HW1a::resizeGL(int w, int h)
 {
 	m_winW = w;
 	m_winH = h;
-	// ar = aspect ratio
 	float xmax, ymax;
 	float ar = (float) w / h;
-	if (ar > 1.0) { // wide screen
+	if (ar > 1.0) {
 		xmax = ar;
 		ymax = 1.0;
-	} else { // tall screen
+	} else {
 		xmax = 1.0;
 		ymax = 1.0 / ar;
 	}
 
-	// set viewport to occupy full canvas
-	glViewport(0, 0, w, h); // 0, 0 = x, y; location of lower left corner of viewport
-
-	// init viewing coordinates for orthographic projection
-	glMatrixMode(GL_PROJECTION); // matrix ops to the projection matrix stack
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION); // choose the projection matrix stack first
 	// (explained in Chapter 3.8 in textbook: Projection Matrices)
-	glLoadIdentity(); // init curr matrix = Identity Matrix
-
-	glOrtho(-xmax, xmax, -ymax, ymax, -1.0, 1.0); // curr matrix *= ortho matrix
-	// orthographic projection -> is to map 3D to 2D to make the projection matrix
-	// view work. parameters in glOrtho() are corners of the coord system
-	// so this actually means that the (0,0) origin is right in the center.
-	
-	// (btw, pretty much just took the same setting from HW0a.cpp)
+	glLoadIdentity(); // init matrix stack to Identity Matrix
+	glOrtho(-xmax, xmax, -ymax, ymax, -1.0, 1.0); // modify matrix stack to be orthographic projection
+	// orthographic projection -> map 3D to 2D
+	// glOrtho(left, right, bottom, top, near, far)
 }
 
 
@@ -133,7 +125,6 @@ void
 HW1a::paintGL()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-
 	glMatrixMode(GL_MODELVIEW);
 	// modelview here because we're setting up the objects, not where our "camera lens" is located
 	// we use projection view earlier because that's where we set up the said camera lens
@@ -166,12 +157,12 @@ HW1a::paintGL()
 		float x = -xmax + (cellWidth/2) + (cellWidth * col);
 		float y = -ymax + (cellHeight/2) + (cellHeight * row);
 		
-		glTranslatef(x, y, 0.0f);
+		glTranslatef(x, y, 0.0f); // translate to center of the grid cell (letter P)
 		float scale = 0.3f;
 		glScalef(scale, scale, 1.0f);
 		glColor3f(1.0F, 1.0f, 1.0f);
 		glBegin(DrawModes[i]);
-			for (int j=0; j<16; j++) {
+			for (int j=0; j<16; j++) { // coords for letter P
 				glVertex2f(Vertices[2*j], Vertices[(2*j)+1]);
 			}
 		glEnd();

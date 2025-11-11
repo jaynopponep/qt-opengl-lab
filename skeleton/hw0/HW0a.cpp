@@ -86,7 +86,7 @@ HW0a::paintGL()
 	glLoadIdentity();
 
 	// experiment with transformation by uncommenting next line
-	// glRotatef(45, 0, 0, 1);
+    //glRotatef(45, 0, 0, 1);
 
 	// define polygon
 	glBegin(GL_POLYGON);
