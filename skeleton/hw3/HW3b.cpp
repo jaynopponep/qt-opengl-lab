@@ -159,7 +159,6 @@ HW3b::paintGL()
 	switch(m_displayMode) {
 	case TEXTURED_WIREFRAME:
     case TEXTURED:
-        // reuse Smooth+Texture shader — it's the only one that shades the Mandrill properly
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_texture);
         glUseProgram(m_program[SMOOTH_TEX].programId());
