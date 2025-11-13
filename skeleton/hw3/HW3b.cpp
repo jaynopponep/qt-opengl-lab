@@ -110,6 +110,11 @@ void
 HW3b::resizeGL(int w, int h)
 {
 	// PUT YOUR CODE (use perspective projection)
+    glViewport(0, 0, w, h);
+
+    float aspect = float(w) / float(h ? h : 1);
+    m_projection.setToIdentity();
+    m_projection.perspective(45.0f, aspect, 0.1f, 100.0f); //project via perspective
 }
 
 
@@ -153,14 +158,43 @@ HW3b::paintGL()
 	// draw textured triangles
 	switch(m_displayMode) {
 	case TEXTURED_WIREFRAME:
-	case TEXTURED:
-		// draw textured surface
-		// PUT YOUR CODE HERE
-		if(m_displayMode != TEXTURED_WIREFRAME)
-			break;
+    case TEXTURED:
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
+        glUseProgram(m_program[SMOOTH_TEX].programId());
+        glUniformMatrix4fv(m_uniform[SMOOTH_TEX][VIEW], 1, GL_FALSE, m_camera->view().constData());
+        glUniformMatrix4fv(m_uniform[SMOOTH_TEX][PROJ], 1, GL_FALSE, m_projection.constData());
+        glUniform3fv(m_uniform[SMOOTH_TEX][LIGHTDIR], 1, &m_light->eye()[0]);
+        glUniform1i(m_uniform[SMOOTH_TEX][SAMPLER], 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indicesBuffer[0]);
+        glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)m_indices_triangles.size(), GL_UNSIGNED_SHORT, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0);
+
+        if (m_displayMode != TEXTURED_WIREFRAME)
+            break;
+
 	case WIREFRAME:
 		// draw wireframe
 		// PUT YOUR CODE HERE
+        glUseProgram(m_program[WIRE_SHADER].programId());
+        glUniformMatrix4fv(m_uniform[WIRE_SHADER][VIEW], 1, GL_FALSE, m_camera->view().constData());
+        glUniformMatrix4fv(m_uniform[WIRE_SHADER][PROJ], 1, GL_FALSE, m_projection.constData());
+
+        // disable per-vertex color to force solid white
+        glDisableVertexAttribArray(ATTRIB_COLOR);
+        glVertexAttrib3f(ATTRIB_COLOR, 1.0f, 1.0f, 1.0f);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indicesBuffer[1]);
+
+        // set polygon mode explicitly to line (just in case)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_LINES, (GLsizei)m_indices_wireframe.size(), GL_UNSIGNED_SHORT, 0);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // restore default
+
+        glEnableVertexAttribArray(ATTRIB_COLOR);
+
+        glUseProgram(0);
 		break;
 	case FLAT_COLOR:
 		glUseProgram(m_program[FLAT_SHADER].programId());	
@@ -361,31 +395,49 @@ HW3b::resetMesh()
 			case SPIKE:
 				vec.setZ((i==j && i==m_grid/2) ? 1.0f : 0.0f);
 				break;
-			case HOLE:
-				// PUT YOUR CODE HERE
-				break;
-			case DIAGONALWALL:
-				// PUT YOUR CODE HERE
-				break;
-			case SIDEWALL:
-				// PUT YOUR CODE HERE
-				break;
-			case DIAGONALBLOCK:
-				// PUT YOUR CODE HERE
-				break;
-			case MIDDLEBLOCK:
-				// PUT YOUR CODE HERE
-				break;
-			case CORNERBLOCK:
-				// PUT YOUR CODE HERE
-				break;
-			case HILL:
-				// PUT YOUR CODE HERE
-				break;
-			case HILLFOUR:
-				// PUT YOUR CODE HERE
-				break;
-		}
+            case HOLE:
+                vec.setZ((i>m_grid/4 && i<3*m_grid/4 && j>m_grid/4 && j<3*m_grid/4) ? -0.5f : 0.0f);
+                break;
+
+            case DIAGONALWALL:
+                vec.setZ((i > j) ? 0.5f : 0.0f);
+                break;
+
+            case SIDEWALL:
+                vec.setZ((i > m_grid/2) ? 0.5f : 0.0f);
+                break;
+
+            case DIAGONALBLOCK:
+                vec.setZ((i > m_grid/4 && i < 3*m_grid/4 && j > i - m_grid/4 && j < i + m_grid/4) ? 0.5f : 0.0f);
+                break;
+
+            case MIDDLEBLOCK:
+                vec.setZ((i>m_grid/3 && i<2*m_grid/3 && j>m_grid/3 && j<2*m_grid/3) ? 0.5f : 0.0f);
+                break;
+
+            case CORNERBLOCK:
+                vec.setZ((i<m_grid/3 && j<m_grid/3) ? 0.5f : 0.0f);
+                break;
+
+            case HILL: //singular bump
+            {
+                float dx = (i - m_grid/2.0f) / (m_grid/2.0f);
+                float dy = (j - m_grid/2.0f) / (m_grid/2.0f);
+                vec.setZ(0.8f * exp(-3.0f * (dx*dx + dy*dy)));
+            }
+            break;
+
+            case HILLFOUR: //generate the quad bump
+            {
+                float dx = (i - m_grid/2.0f) / (m_grid/2.0f);
+                float dy = (j - m_grid/2.0f) / (m_grid/2.0f);
+                vec.setZ(0.8f * (exp(-5.0f*((dx-0.5)*(dx-0.5)+(dy-0.5)*(dy-0.5))) +
+                                 exp(-5.0f*((dx+0.5)*(dx+0.5)+(dy+0.5)*(dy+0.5))) +
+                                 exp(-5.0f*((dx-0.5)*(dx-0.5)+(dy+0.5)*(dy+0.5))) +
+                                 exp(-5.0f*((dx+0.5)*(dx+0.5)+(dy-0.5)*(dy-0.5)))));
+            }
+            break;
+            }
 	   }
 	}
 	getFaceNorms();
@@ -531,6 +583,8 @@ HW3b::initTexture()
 	int w = qImage.width ();
 	int h = qImage.height();
 
+
+    glActiveTexture(GL_TEXTURE0);
 	// generate texture name and bind it
 	glGenTextures(1, &m_texture);
 	glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -566,6 +620,9 @@ HW3b::initShaders()
 	initShader(TEX_SHADER,  QString(":/hw3/vshader3b1.glsl"), 
 				QString(":/hw3/fshader3b1.glsl"), uniforms);
 
+
+
+
 	// reset uniform hash table for next shader
 	uniforms.clear();
 	uniforms["u_View"      ] = VIEW;
@@ -600,6 +657,11 @@ HW3b::initShaders()
 	// compile shader, bind attribute vars, link shader, and initialize uniform var table
 	initShader(SMOOTH_TEX,  QString(":/hw3/vshader3b5.glsl"), 
 				QString(":/hw3/fshader3b5.glsl"), uniforms);
+
+
+
+
+
 }
 
 

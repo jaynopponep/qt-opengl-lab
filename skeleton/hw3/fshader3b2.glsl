@@ -1,8 +1,8 @@
-#version 330
+#version 330 core
 
-// PUT YOUR CODE HERE
+out vec4 FragColor;
 
-void main() 
+void main()
 {
-	// PUT YOUR CODE HERE
+    FragColor = vec4(1.0, 1.0, 1.0, 1.0); // solid white wireframe
 }
