@@ -8,3 +8,5 @@ release
 *.vcxproj*
 Make*
 *.app
+*.idx
+*.log
