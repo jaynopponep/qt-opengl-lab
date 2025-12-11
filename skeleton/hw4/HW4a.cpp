@@ -284,17 +284,17 @@ HW4a::paintGL()
 	translate_sun.setToIdentity();
 
 	// apply translate_sun to top of stack
-	// PUT YOUR CODE HERE
+	mvStack.top() *= translate_sun;
 
 	// duplicate top of stack
-	// PUT YOUR CODE HERE
+	mvStack.push(mvStack.top());
 
 	// init sun rotation: m_angle about the y-axis
 	QMatrix4x4 rotate_sun;
 	rotate_sun.rotate(m_angle*Radian2Deg / 2.0f, vec3(0, 1, 0));
 
 	// apply sun rotation to top of stack
-	// PUT YOUR CODE HERE
+	mvStack.top() *= rotate_sun;
 
 	// display sun according to display mode
 	glUniformMatrix4fv(m_uniform[m_displayMode][VIEW], 1, GL_FALSE, mvStack.top().constData());
@@ -303,7 +303,7 @@ HW4a::paintGL()
 	mvStack.pop();
 
 	// earth: push top of stack (sun model-view matrix) to build up earth transform
-	// PUT YOUR CODE
+	mvStack.push(mvStack.top());
 
 	// apply earth translation of [5*sin(m_angle), 0, 5*cos(m_angle)]
 	QMatrix4x4 translate_earth;

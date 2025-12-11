@@ -28,20 +28,34 @@ void main()
 {
 
 	// Output position of the vertex, in clip space : MVP * position
-// PUT YOUR CODE HERE
+	// PUT YOUR CODE HERE
+	gl_Position = u_MVP * vec4(a_Position, 1.0);
 	
 	// Position of the vertex, in worldspace : M * position
-// PUT YOUR CODE HERE
+	// Note: Without u_Model, we approximate by using model space position
+	// PUT YOUR CODE HERE
+	// In a full implementation: Position_worldspace = (u_Model * vec4(a_Position, 1.0)).xyz;
+	Position_worldspace = a_Position;
 
 	// Vector that goes from the vertex to the camera, in camera space.
 	// In camera space, the camera is at the origin (0,0,0).
-// PUT YOUR CODE HERE
+	// PUT YOUR CODE HERE
+	vec3 Position_cameraspace = (u_View * vec4(Position_worldspace, 1.0)).xyz;
+	EyeDirection_cameraspace = vec3(0, 0, 0) - Position_cameraspace;
 
 	// Vector that goes from the vertex to the light, in camera space
-// PUT YOUR CODE HERE
+	// u_LightInvDirection points from light toward scene (inverse of light direction)
+	// PUT YOUR CODE HERE
+	vec3 LightPosition_worldspace = -u_LightInvDirection * 10000.0;
+	vec3 LightPosition_cameraspace = (u_View * vec4(LightPosition_worldspace, 1.0)).xyz;
+	LightDirection_cameraspace = Position_cameraspace - LightPosition_cameraspace;
 	
 	// Normal of the the vertex, in camera space
-// PUT YOUR CODE HERE
+	// PUT YOUR CODE HERE
+	Normal_cameraspace = (u_View * vec4(a_Normal, 0.0)).xyz;
+	
+	// Shadow coordinate: transform position to light's clip space
+	ShadowCoord = u_DepthBiasMVP * vec4(a_Position, 1.0);
 
 	vColor = a_Color;
 }
